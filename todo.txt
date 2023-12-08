@@ -1,2 +1,2 @@
-trauma licznik
 auto pinger
+tostery

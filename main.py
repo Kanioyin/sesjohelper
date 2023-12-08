@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import json
 from datetime import datetime, timedelta
-from config import TOKEN  # Importuj swój własny token z pliku config.py
+from config import TOKEN
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -22,12 +22,15 @@ async def add_record(ctx, date_str: str, *members: discord.Member):
     try:
         with open('records.json', 'r') as file:
             records = json.load(file)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.decoder.JSONDecodeError):
         records = {}
+
     records[str(date)] = [member.id for member in members]
 
     with open('records.json', 'w') as file:
         json.dump(records, file)
+
+    await ctx.send('Rekord dodany pomyślnie.')
 
 
 @bot.command(name='list_records')
@@ -73,6 +76,64 @@ async def ile_wolnego(ctx):
             difference = latest_date - user_date
             await ctx.send(f'{ctx.author.display_name} ma wolne od ostatniej daty przez {difference.days} dni.')
             return
+
+
+@bot.command(name='add_tt')
+@commands.has_role('Pan & Władca')
+async def add_tt(ctx, *members: discord.Member):
+    try:
+        with open('records.json', 'r') as records_file:
+            records = json.load(records_file)
+    except FileNotFoundError:
+        await ctx.send('Brak zapisanych rekordów.')
+        return
+
+    try:
+        with open('tt.json', 'r') as tt_file:
+            tt_data = json.load(tt_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        tt_data = {}
+
+    latest_date = max(records, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
+
+    new_date = (datetime.strptime(latest_date, '%Y-%m-%d') + timedelta(days=30)).strftime('%Y-%m-%d')
+    tt_data[new_date] = [member.id for member in members]
+
+    with open('tt.json', 'w') as tt_file:
+        json.dump(tt_data, tt_file)
+
+    await ctx.send('Dżentelmen został ztraumatyzowany.')
+
+
+@bot.command(name='ile_tt')
+async def ile_tt(ctx):
+    try:
+        with open('records.json', 'r') as records_file:
+            records = json.load(records_file)
+    except FileNotFoundError:
+        await ctx.send('Baza się wyjebała.')
+        return
+
+    try:
+        with open('tt.json', 'r') as tt_file:
+            tt_data = json.load(tt_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        await ctx.send('Baza się wyjebała.')
+        return
+
+    user_id = ctx.author.id
+
+    latest_date_records = max(records, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
+
+    for date_tt, members_tt in tt_data.items():
+        if user_id in members_tt:
+            user_date_tt = datetime.strptime(date_tt, '%Y-%m-%d').date()
+            latest_date_records = datetime.strptime(latest_date_records, '%Y-%m-%d').date()
+            difference_tt = user_date_tt - latest_date_records
+            await ctx.send(f'Zostało Ci jeszcze: {difference_tt.days} dni Traumy.')
+            return
+
+    await ctx.send('Bracholu, ty nie masz Traumy.')
 
 
 bot.run(TOKEN)
