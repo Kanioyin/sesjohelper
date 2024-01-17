@@ -60,6 +60,9 @@ async def ile_wolnego(ctx):
     except FileNotFoundError:
         await ctx.send('Albo Cię nie było albo coś zjebałem')
         return
+    except json.JSONDecodeError:
+        await ctx.send('Wyjebało bazę :czacha.')
+        return
 
     user_id = ctx.author.id
 
@@ -77,6 +80,8 @@ async def ile_wolnego(ctx):
             await ctx.send(f'{ctx.author.display_name} ma wolne od ostatniej daty przez {difference.days} dni.')
             return
 
+    if user_id not in records.keys():
+        await ctx.send('Weź coś kurwa zagraj.')
 
 @bot.command(name='add_tt')
 @commands.has_role('Pan & Władca')
