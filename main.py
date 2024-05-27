@@ -2,17 +2,15 @@ import discord
 from discord.ext import commands
 import json
 from datetime import datetime, timedelta
-from config import TOKEN
+from config import TOKEN  # Importuj swój własny token z pliku config.py
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
-
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
     print('------')
-
 
 @bot.command(name='add_record')
 @commands.has_role('Pan & Władca')
@@ -22,16 +20,12 @@ async def add_record(ctx, date_str: str, *members: discord.Member):
     try:
         with open('records.json', 'r') as file:
             records = json.load(file)
-    except (FileNotFoundError, json.decoder.JSONDecodeError):
+    except FileNotFoundError:
         records = {}
-
     records[str(date)] = [member.id for member in members]
 
     with open('records.json', 'w') as file:
         json.dump(records, file)
-
-    await ctx.send('Rekord dodany pomyślnie.')
-
 
 @bot.command(name='list_records')
 async def list_records(ctx):
@@ -51,7 +45,6 @@ async def list_records(ctx):
         members_str = ', '.join(member_names)
         await ctx.send(f'{date_str}: {members_str}')
 
-
 @bot.command(name='ile_wolnego')
 async def ile_wolnego(ctx):
     try:
@@ -59,9 +52,6 @@ async def ile_wolnego(ctx):
             records = json.load(file)
     except FileNotFoundError:
         await ctx.send('Albo Cię nie było albo coś zjebałem')
-        return
-    except json.JSONDecodeError:
-        await ctx.send('Wyjebało bazę :czacha.')
         return
 
     user_id = ctx.author.id
@@ -80,65 +70,73 @@ async def ile_wolnego(ctx):
             await ctx.send(f'{ctx.author.display_name} ma wolne od ostatniej daty przez {difference.days} dni.')
             return
 
-    if user_id not in records.keys():
-        await ctx.send('Weź coś kurwa zagraj.')
-
-@bot.command(name='add_tt')
-@commands.has_role('Pan & Władca')
-async def add_tt(ctx, *members: discord.Member):
-    try:
-        with open('records.json', 'r') as records_file:
-            records = json.load(records_file)
-    except FileNotFoundError:
-        await ctx.send('Brak zapisanych rekordów.')
+# Dodaj funkcje do przypisywania roli na podstawie reakcji
+@bot.event
+async def on_raw_reaction_add(payload):
+    guild = bot.get_guild(payload.guild_id)
+    if guild is None:
         return
 
-    try:
-        with open('tt.json', 'r') as tt_file:
-            tt_data = json.load(tt_file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        tt_data = {}
+    role_message_id = 1244395920775319625  # Zamień na ID twojej wiadomości
+    role1_id = 1244391784185069639  # świerzak
+    role2_id = 1244394043044266024  # CPTG
+    role3_id = 338030590257266688  # basic
+    emoji1 = 'moai'
+    emoji2 = 'Ez'
+    emoji3 = 'JP'
 
-    latest_date = max(records, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
+    print(f"Emoji added: {payload.emoji.name}")
 
-    new_date = (datetime.strptime(latest_date, '%Y-%m-%d') + timedelta(days=30)).strftime('%Y-%m-%d')
-    tt_data[new_date] = [member.id for member in members]
-
-    with open('tt.json', 'w') as tt_file:
-        json.dump(tt_data, tt_file)
-
-    await ctx.send('Dżentelmen został ztraumatyzowany.')
-
-
-@bot.command(name='ile_tt')
-async def ile_tt(ctx):
-    try:
-        with open('records.json', 'r') as records_file:
-            records = json.load(records_file)
-    except FileNotFoundError:
-        await ctx.send('Baza się wyjebała.')
-        return
-
-    try:
-        with open('tt.json', 'r') as tt_file:
-            tt_data = json.load(tt_file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        await ctx.send('Baza się wyjebała.')
-        return
-
-    user_id = ctx.author.id
-
-    latest_date_records = max(records, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
-
-    for date_tt, members_tt in tt_data.items():
-        if user_id in members_tt:
-            user_date_tt = datetime.strptime(date_tt, '%Y-%m-%d').date()
-            latest_date_records = datetime.strptime(latest_date_records, '%Y-%m-%d').date()
-            difference_tt = user_date_tt - latest_date_records
-            await ctx.send(f'Zostało Ci jeszcze: {difference_tt.days} dni Traumy.')
+    if payload.message_id == role_message_id:
+        member = guild.get_member(payload.user_id)
+        if member is None:
             return
 
-    await ctx.send('Bracholu, ty nie masz Traumy.')
+        if payload.emoji.name == emoji1:
+            role = guild.get_role(role1_id)
+        elif payload.emoji.name == emoji2:
+            role = guild.get_role(role2_id)
+        elif payload.emoji.name == emoji3:
+            role = guild.get_role(role3_id)
+        else:
+            role = None
 
+        if role is not None:
+            await member.add_roles(role)
+            print(f"Added {role.name} to {member.display_name}")
+
+@bot.event
+async def on_raw_reaction_remove(payload):
+    guild = bot.get_guild(payload.guild_id)
+    if guild is None:
+        return
+
+    role_message_id = 1244395920775319625  # Zamień na ID twojej wiadomości
+    role1_id = 1244391784185069639  # świerzak
+    role2_id = 1244394043044266024  # CPTG
+    role3_id = 338030590257266688  # basic
+    emoji1 = 'Czad'
+    emoji2 = 'Ez'
+    emoji3 = 'JP'
+
+    print(f"Emoji removed: {payload.emoji.name}")
+
+    if payload.message_id == role_message_id:
+        member = guild.get_member(payload.user_id)
+        if member is None:
+            return
+
+        if payload.emoji.name == emoji1:
+            role = guild.get_role(role1_id)
+        elif payload.emoji.name == emoji2:
+            role = guild.get_role(role2_id)
+        elif payload.emoji.name == emoji3:
+            role = guild.get_role(role3_id)
+        else:
+            role = None
+
+        if role is not None:
+            await member.remove_roles(role)
+            print(f"Removed {role.name} from {member.display_name}")
 
 bot.run(TOKEN)
